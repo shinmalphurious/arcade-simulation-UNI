@@ -91,6 +91,7 @@ class ArcadeSimulationEngine:
 
         # Telemetry metrics
         self.metrics: dict[str, int] = {
+            "players_generated": 0,
             "total_taps": 0,
             "approved": 0,
             "insufficient_credits": 0,
@@ -171,6 +172,7 @@ class ArcadeSimulationEngine:
             color=op.color,
         )
         self.customers[cust_id] = cust
+        self.metrics["players_generated"] += 1
         return cust
 
     async def _handle_pi_event(self, event: dict[str, Any]) -> None:
@@ -556,6 +558,7 @@ class ArcadeSimulationEngine:
             "customers": customers_payload,
             "metrics": {
                 **self.metrics,
+                "active_players": len(self.customers),
                 "avg_latency_ms": avg_lat,
                 "p95_latency_ms": p95_lat,
             },

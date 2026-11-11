@@ -187,3 +187,22 @@ async def test_dashboard_metrics_counters_increment_per_outcome(arcade_client):
     assert m["approved"] == 1
     assert m["insufficient_credits"] == 1
     assert m["operator_mismatch"] == 1
+
+
+@pytest.mark.asyncio
+async def test_players_generated_counter_increments_and_resets(arcade_client):
+    client, _ = arcade_client
+
+    r1 = await client.post("/api/sim/spawn", json={"behavior": "normal", "initial_credits": 10})
+    assert r1.status_code == 200
+    r2 = await client.post("/api/sim/spawn", json={"behavior": "roam_same_op", "initial_credits": 12})
+    assert r2.status_code == 200
+
+    snap = (await client.get("/api/sim/snapshot")).json()
+    assert snap["metrics"]["players_generated"] == 2
+    assert snap["metrics"]["active_players"] == 2
+
+    await client.post("/api/sim/reset")
+    snap_after_reset = (await client.get("/api/sim/snapshot")).json()
+    assert snap_after_reset["metrics"]["players_generated"] == 0
+    assert snap_after_reset["metrics"]["active_players"] == 0

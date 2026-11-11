@@ -181,6 +181,7 @@ async def run_stress_test_against_base_url(
             "total_requests": len(workload),
             "concurrency": req.concurrency,
             "num_cards": req.num_cards,
+            "players_generated": len(seeded_cards),
             "target_mode": req.target_mode,
             "elapsed_sec": round(total_elapsed_sec, 3),
             "throughput_rps": throughput_rps,

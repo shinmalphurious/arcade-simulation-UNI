@@ -131,6 +131,9 @@ async function refreshAccounts() {
 function updateTelemetryUI(snap) {
   if (!snap) return;
   const m = snap.metrics;
+  const generated = m.players_generated ?? 0;
+  const active = m.active_players ?? (snap.customers ? snap.customers.length : 0);
+  document.getElementById("stat-players").textContent = `${generated} (${active} live)`;
   document.getElementById("stat-total").textContent = m.total_taps;
   document.getElementById("stat-approved").textContent = m.approved;
   document.getElementById("stat-insufficient").textContent = m.insufficient_credits;
@@ -640,6 +643,8 @@ document.getElementById("btn-run-stress").addEventListener("click", async () => 
         ${r.passed ? "INVARIANTS PASSED • ZERO DOUBLE-SPEND / LEAKS" : "AUDIT FAILED"}
       </div>
       <div class="stress-grid">
+        <div class="stress-metric"><div class="k">Players Generated</div><div class="v">${r.players_generated ?? r.num_cards}</div></div>
+        <div class="stress-metric"><div class="k">Total Taps</div><div class="v">${r.total_requests}</div></div>
         <div class="stress-metric"><div class="k">Throughput</div><div class="v">${r.throughput_rps} req/s</div></div>
         <div class="stress-metric"><div class="k">Elapsed</div><div class="v">${r.elapsed_sec} s</div></div>
         <div class="stress-metric"><div class="k">Latency p50 / p95</div><div class="v">${r.latency_ms.p50} / ${r.latency_ms.p95} ms</div></div>

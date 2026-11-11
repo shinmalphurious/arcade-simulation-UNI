@@ -79,6 +79,7 @@ def _print_report(title: str, report: dict[str, Any]) -> None:
     print(f"SCENARIO: {title}  [{status_str}]")
     print("=" * 72)
     print(
+        f"Players Generated: {report.get('players_generated', report['num_cards'])} | "
         f"Requests: {report['total_requests']} | Concurrency: {report['concurrency']} | "
         f"Mode: {report['target_mode']} | Elapsed: {report['elapsed_sec']}s | "
         f"Throughput: {report['throughput_rps']} req/s"
