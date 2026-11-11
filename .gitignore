@@ -1,0 +1,19 @@
+# Python virtual environments & caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Local SQLite simulation databases
+*.db
+*.db-wal
+*.db-shm
+.tmp_test_db/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

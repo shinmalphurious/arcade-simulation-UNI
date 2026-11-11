@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arcade NFC Credit Simulation & Stress Test Suite</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-dot"></div>
+      <div>
+        <h1>Arcade NFC Credit Simulation</h1>
+        <p class="subtitle">Raspberry Pi NFC Readers • Local vs. Cloud Sync • Multi-Operator Isolation</p>
+      </div>
+    </div>
+
+    <div class="telemetry-strip">
+      <div class="stat-pill">
+        <span class="label">Total Taps</span>
+        <span class="value" id="stat-total">0</span>
+      </div>
+      <div class="stat-pill ok">
+        <span class="label">Approved</span>
+        <span class="value" id="stat-approved">0</span>
+      </div>
+      <div class="stat-pill warn">
+        <span class="label">No Credits</span>
+        <span class="value" id="stat-insufficient">0</span>
+      </div>
+      <div class="stat-pill err">
+        <span class="label">Wrong Operator</span>
+        <span class="value" id="stat-mismatch">0</span>
+      </div>
+      <div class="stat-pill info">
+        <span class="label">Avg / p95</span>
+        <span class="value" id="stat-latency">0 / 0 ms</span>
+      </div>
+      <div class="stat-pill" id="cloud-status-pill">
+        <span class="label">Cloud WAN</span>
+        <span class="value" id="stat-cloud">ONLINE</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="canvas-panel">
+      <div class="canvas-toolbar">
+        <div class="toolbar-group">
+          <button id="btn-toggle-run" class="btn primary">Pause</button>
+          <button id="btn-sync-now" class="btn accent">Sync Local Sites Now</button>
+          <button id="btn-cloud-outage" class="btn danger-outline">Simulate Cloud Outage</button>
+          <button id="btn-reset" class="btn ghost">Reset</button>
+        </div>
+        <div class="toolbar-group legend">
+          <span><i class="dot cloud"></i>Cloud (Real-Time)</span>
+          <span><i class="dot local"></i>Local (Periodic Sync)</span>
+          <span><i class="dot ok"></i>Approved</span>
+          <span><i class="dot err"></i>Denied</span>
+        </div>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="arcade-canvas"></canvas>
+      </div>
+    </section>
+
+    <aside class="sidebar">
+      <div class="tabs">
+        <button class="tab active" data-tab="controls">Controls</button>
+        <button class="tab" data-tab="accounts">Cards & Log</button>
+        <button class="tab" data-tab="stress">Stress Test</button>
+      </div>
+
+      <!-- TAB 1: CONTROLS & SCENARIOS -->
+      <div class="tab-content active" id="tab-controls">
+        <div class="card">
+          <h3>Spawn Customer Scenarios</h3>
+          <div class="btn-grid">
+            <button class="btn secondary" onclick="spawnScenario('normal')">+ Normal Player</button>
+            <button class="btn secondary" onclick="spawnScenario('roam_same_op')">+ Roam Same Operator</button>
+            <button class="btn secondary" onclick="spawnScenario('cross_op_attempt')">+ Cross-Op Attempt</button>
+            <button class="btn secondary" onclick="spawnScenario('double_tap')">+ Double-Tap Race</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Network & Reader Parameters</h3>
+          <label class="slider-row">
+            <span>Simulation Speed: <strong id="val-speed">1.0x</strong></span>
+            <input type="range" id="inp-speed" min="0.5" max="5" step="0.5" value="1" />
+          </label>
+          <label class="slider-row">
+            <span>Cloud Latency: <strong id="val-cloud-lat">45 ms</strong></span>
+            <input type="range" id="inp-cloud-lat" min="0" max="500" step="5" value="45" />
+          </label>
+          <label class="slider-row">
+            <span>Local LAN Latency: <strong id="val-local-lat">8 ms</strong></span>
+            <input type="range" id="inp-local-lat" min="0" max="150" step="2" value="8" />
+          </label>
+          <label class="slider-row">
+            <span>Local Sync Interval: <strong id="val-sync-int">10 s</strong></span>
+            <input type="range" id="inp-sync-int" min="3" max="30" step="1" value="10" />
+          </label>
+          <label class="slider-row">
+            <span>Pi NFC Debounce: <strong id="val-debounce">1200 ms</strong></span>
+            <input type="range" id="inp-debounce" min="0" max="3000" step="100" value="1200" />
+          </label>
+        </div>
+
+        <div class="card">
+          <h3>Manual NFC Tap & Kiosk Tester</h3>
+          <div class="form-stack">
+            <label>Card UID
+              <select id="manual-card-select"></select>
+            </label>
+            <label>Target Machine (Pi Reader)
+              <select id="manual-machine-select"></select>
+            </label>
+            <div class="btn-row">
+              <button class="btn primary" id="btn-manual-tap">Tap Card on Pi</button>
+              <button class="btn warn-btn" id="btn-manual-race">2x Simultaneous Tap</button>
+            </div>
+            <div class="btn-row">
+              <button class="btn ghost" id="btn-manual-topup">Top Up +10 Credits</button>
+              <button class="btn ghost" id="btn-issue-card">Issue New Card</button>
+            </div>
+            <div id="manual-result" class="manual-result">Select a card and machine to test a real HTTP Pi tap.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: ACCOUNTS & HTTP LOG -->
+      <div class="tab-content" id="tab-accounts">
+        <div class="card">
+          <div class="card-head">
+            <h3>Active NFC Card Accounts</h3>
+            <span class="badge" id="account-count">0</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Card UID</th>
+                  <th>Operator</th>
+                  <th>Tier</th>
+                  <th>Credits</th>
+                </tr>
+              </thead>
+              <tbody id="accounts-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Live Pi &lt;-&gt; Server HTTP Log</h3>
+          <div class="log-feed" id="event-log"></div>
+        </div>
+      </div>
+
+      <!-- TAB 3: STRESS TEST RUNNER -->
+      <div class="tab-content" id="tab-stress">
+        <div class="card">
+          <h3>High-Scale Concurrency &amp; Invariant Stress Test</h3>
+          <p class="muted">
+            Fires concurrent HTTP requests through Raspberry Pi endpoints, injecting cross-operator attempts and simultaneous double-taps, then audits credit conservation.
+          </p>
+          <div class="form-grid">
+            <label>Total Taps
+              <input type="number" id="st-total" value="500" min="10" max="20000" />
+            </label>
+            <label>Concurrency
+              <input type="number" id="st-concurrency" value="60" min="1" max="500" />
+            </label>
+            <label>Test Cards
+              <input type="number" id="st-cards" value="40" min="1" max="1000" />
+            </label>
+            <label>Credits / Card
+              <input type="number" id="st-credits" value="25" min="1" max="10000" />
+            </label>
+            <label>Cross-Op %
+              <input type="number" id="st-cross" value="10" min="0" max="50" />
+            </label>
+            <label>Double-Tap %
+              <input type="number" id="st-double" value="15" min="0" max="50" />
+            </label>
+          </div>
+          <label class="full-width">Target Storage Tier
+            <select id="st-mode">
+              <option value="mixed">Mixed (Cloud + Local Sites)</option>
+              <option value="cloud">Cloud Tier Only</option>
+              <option value="local">Local Tier Only</option>
+            </select>
+          </label>
+          <button class="btn primary full-btn" id="btn-run-stress">Run Stress Test</button>
+        </div>
+
+        <div class="card" id="stress-results-card">
+          <h3>Stress Test Report</h3>
+          <div id="stress-results" class="muted">Configure parameters above and click Run Stress Test.</div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
